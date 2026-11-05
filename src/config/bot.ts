@@ -1,8 +1,6 @@
 import path from "path";
 import fs from "fs";
 import { BotCommand, MenuButton } from "node-telegram-bot-api";
-import dotenv from "dotenv";
-dotenv.config(); // ⚠️ DOIT être appelé avant toute lecture de process.env plus bas
 
 const resolveConfiguredFile = (configuredPath: string | undefined): string => {
   if (!configuredPath) return "";

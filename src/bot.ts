@@ -124,7 +124,12 @@ export default class Bot {
 
     this.api = axios.create({ baseURL: this.apiUrl, timeout: 60_000 });
     this.setupErrorHandlers();
-    await this.configureTelegramMenu();
+    void this.configureTelegramMenu().catch((error: unknown) => {
+      console.error(
+        `${LOG} ❌ Configuration Telegram interrompue :`,
+        (error as Error).message,
+      );
+    });
     this.ensureTmpDir();
 
     if (this.useWebhook) {
@@ -140,27 +145,65 @@ export default class Bot {
   private async configureTelegramMenu(): Promise<void> {
     if (!this.bot) throw new Error("Bot Telegram non initialisé");
 
-    await this.bot.setMyName({ name: BOT_CONFIG.name });
-    await this.bot.setMyDescription({ description: BOT_CONFIG.description });
-    await this.bot.setMyShortDescription({
-      short_description: BOT_CONFIG.shortDescription,
-    });
-    await this.bot.setMyCommands(BOT_CONFIG.commands);
-    await this.bot.setChatMenuButton({ menu_button: BOT_CONFIG.menuButton });
+    // [COPILOT] Controle un peu ici
+    await this.configureTelegramSetting("nom", () =>
+      this.bot!.setMyName({ name: BOT_CONFIG.name }),
+    );
+
+    await this.configureTelegramSetting("description", () =>
+      this.bot!.setMyDescription({ description: BOT_CONFIG.description }),
+    );
+
+    await this.configureTelegramSetting("description courte", () =>
+      this.bot!.setMyShortDescription({
+        short_description: BOT_CONFIG.shortDescription,
+      }),
+    );
+    await this.configureTelegramSetting("commandes", () =>
+      this.bot!.setMyCommands(BOT_CONFIG.commands),
+    );
+    await this.configureTelegramSetting("bouton de menu", () =>
+      this.bot!.setChatMenuButton({ menu_button: BOT_CONFIG.menuButton }),
+    );
 
     if (BOT_CONFIG.profilePhotoPath) {
       if (!fs.existsSync(BOT_CONFIG.profilePhotoPath)) {
-        throw new Error(
-          `Photo de profil Telegram introuvable: ${BOT_CONFIG.profilePhotoPath}`,
+        console.error(
+          `${LOG} ❌ Photo de profil Telegram introuvable : ${BOT_CONFIG.profilePhotoPath}`,
+        );
+      } else {
+        await this.configureTelegramSetting("photo de profil", () =>
+          this.bot!.setMyProfilePhoto({
+            type: "static",
+            photo: BOT_CONFIG.profilePhotoPath,
+          }),
         );
       }
-      await this.bot.setMyProfilePhoto({
-        type: "static",
-        photo: BOT_CONFIG.profilePhotoPath,
-      });
     }
 
     console.log(`${LOG} ✅ Identité et menu Telegram configurés`);
+  }
+
+  private async configureTelegramSetting(
+    setting: string,
+    operation: () => Promise<unknown>,
+  ): Promise<void> {
+    try {
+      await Promise.race([
+        operation(),
+        new Promise<never>((_, reject) => {
+          setTimeout(
+            () => reject(new Error("délai dépassé après 15 secondes")),
+            15_000,
+          );
+        }),
+      ]);
+    } catch (error) {
+      console.error(
+        `${LOG} ⚠️ Configuration Telegram ignorée (${setting}) :`,
+        (error as Error).message,
+      );
+    }
   }
 
   private async sendWelcomeMessage(
@@ -214,7 +257,8 @@ export default class Bot {
     config: Parameters<AxiosInstance["request"]>[0],
     retry = true,
   ): Promise<AxiosResponse<T>> {
-    const token = this.sessions.get(telegramId) ?? (await this.createSession(telegramId));
+    const token =
+      this.sessions.get(telegramId) ?? (await this.createSession(telegramId));
     try {
       return await this.api!.request<T>({
         ...config,
@@ -224,7 +268,11 @@ export default class Bot {
         },
       });
     } catch (error) {
-      if (retry && axios.isAxiosError(error) && error.response?.status === 401) {
+      if (
+        retry &&
+        axios.isAxiosError(error) &&
+        error.response?.status === 401
+      ) {
         this.sessions.delete(telegramId);
         return this.request<T>(telegramId, config, false);
       }
@@ -503,11 +551,17 @@ export default class Bot {
       if (msg.reply_to_message?.text === LINK_PROMPT) {
         const apiKey = text.trim();
         if (apiKey.length < 16 || apiKey.length > 255) {
-          return void this.safeSend(chatId, "❌ Cette clé API semble invalide.");
+          return void this.safeSend(
+            chatId,
+            "❌ Cette clé API semble invalide.",
+          );
         }
         try {
           if (msg.chat.type !== "private") {
-            return void this.safeSend(chatId, "❌ La liaison est disponible en message privé uniquement.");
+            return void this.safeSend(
+              chatId,
+              "❌ La liaison est disponible en message privé uniquement.",
+            );
           }
           const result = await this.linkAccount(chatId, apiKey);
           const user = result.user;
@@ -519,7 +573,10 @@ export default class Bot {
             { parse_mode: "Markdown" },
           );
         } catch (error) {
-          console.error(`${LOG} ❌ liaison Telegram :`, (error as Error).message);
+          console.error(
+            `${LOG} ❌ liaison Telegram :`,
+            (error as Error).message,
+          );
           return void this.safeSend(
             chatId,
             "❌ Impossible de lier le compte pour le moment.",
@@ -542,11 +599,14 @@ export default class Bot {
 
       let data: any;
       try {
-        const res = await this.request<AnalyzeResponse>(msg.from?.id ?? chatId, {
-          method: "GET",
-          url: "/bot/media/analyze",
-          params: { url: text },
-        });
+        const res = await this.request<AnalyzeResponse>(
+          msg.from?.id ?? chatId,
+          {
+            method: "GET",
+            url: "/bot/media/analyze",
+            params: { url: text },
+          },
+        );
         data = res?.data?.data;
         if (!data) throw new Error("Réponse API sans données exploitables.");
       } catch (e) {
@@ -617,11 +677,17 @@ export default class Bot {
       // Telegram nous renvoie le message complet à chaque callback, avec
       // la liste d'entités — dont notre lien caché de type "text_link".
       const message = query.message;
-      const messageText = message && "text" in message ? message.text : undefined;
+      const messageText =
+        message && "text" in message ? message.text : undefined;
       const linkEntity =
         message && "entities" in message
           ? (message.entities?.find((e) => e.type === "text_link") as
-              | { type: "text_link"; offset: number; length: number; url: string }
+              | {
+                  type: "text_link";
+                  offset: number;
+                  length: number;
+                  url: string;
+                }
               | undefined)
           : undefined;
 
@@ -772,11 +838,14 @@ export default class Bot {
 
       const ext = isAudio ? "mp3" : "mp4";
       try {
-        const fileRes = await this.request<NodeJS.ReadableStream>(query.from.id, {
-          method: "GET",
-          url: `/bot/media/file/${jobId}`,
-          responseType: "stream",
-        });
+        const fileRes = await this.request<NodeJS.ReadableStream>(
+          query.from.id,
+          {
+            method: "GET",
+            url: `/bot/media/file/${jobId}`,
+            responseType: "stream",
+          },
+        );
         const filename = `${jobId}.${ext}`;
 
         if (isAudio) {
@@ -924,11 +993,11 @@ export default class Bot {
   ) {
     return new Promise((resolve, reject) => {
       this.request<NodeJS.ReadableStream>(telegramId, {
-          method: "GET",
-          url: `/bot/media/progress/${jobId}`,
-          responseType: "stream",
-          headers: { Accept: "text/event-stream" },
-        })
+        method: "GET",
+        url: `/bot/media/progress/${jobId}`,
+        responseType: "stream",
+        headers: { Accept: "text/event-stream" },
+      })
         .then((res) => {
           const rl = readline.createInterface({ input: res.data });
           rl.on("line", (line) => {
