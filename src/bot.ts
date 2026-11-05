@@ -132,7 +132,7 @@ export default class Bot {
     }
 
     console.log(LOG + " API URL : " + this.apiUrl);
-    console.log(LOG + " 🤖 Bot Telegram StreamLoaders démarré — mode API");
+    console.log(LOG + " 🤖 Bot Telegram StreamLoaders Test démarré — mode API");
   }
 
   private async configureTelegramMenu(): Promise<void> {
@@ -420,7 +420,7 @@ export default class Bot {
       console.log("Nouveau /start de " + msg.chat.username);
       this.safeSend(
         msg.chat.id,
-        `👋 Salut ! Bienvenue sur *StreamLoaders Bot* 🚀\n\n` +
+        `👋 Salut ! Bienvenue sur *StreamLoaders TestBot* 🚀\n\n` +
           `Envoie-moi le lien d'une vidéo (YouTube, TikTok, Instagram...) et télécharge-la instantanément.\n\n` +
           `💡 Les membres Premium du site profitent de téléchargements illimités et sans restriction de durée !`,
         { parse_mode: "Markdown" },
@@ -434,7 +434,7 @@ export default class Bot {
           `1️⃣ Envoie-moi un lien de vidéo\n` +
           `2️⃣ Choisis le format (Vidéo HD, Audio MP3, ou Musique Officielle)\n` +
           `3️⃣ Attends la fin du téléchargement\n\n` +
-          `Les limites et autorisations sont vérifiées automatiquement par le service StreamLoaders.`,
+          `Les limites et autorisations sont vérifiées automatiquement par le service Test StreamLoaders.`,
         { parse_mode: "Markdown" },
       );
     });
