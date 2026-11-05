@@ -1,5 +1,7 @@
 import path from "path";
 import { BotCommand, MenuButton } from "node-telegram-bot-api";
+import dotenv from "dotenv";
+dotenv.config(); // ⚠️ DOIT être appelé avant toute lecture de process.env plus bas
 
 const parseCommands = (): BotCommand[] => {
   const defaultCommands: BotCommand[] = [
@@ -23,7 +25,9 @@ const parseCommands = (): BotCommand[] => {
           typeof (command as BotCommand).description === "string",
       )
     ) {
-      throw new Error("TELEGRAM_BOT_COMMANDS doit être un tableau de commandes Telegram");
+      throw new Error(
+        "TELEGRAM_BOT_COMMANDS doit être un tableau de commandes Telegram",
+      );
     }
     return commands;
   } catch (error) {
@@ -46,8 +50,7 @@ export const BOT_CONFIG = {
     : "",
   commands: parseCommands(),
   menuButton: { type: "commands" } as MenuButton,
-  welcomeTitle:
-    process.env.TELEGRAM_BOT_WELCOME_TITLE || "StreamLoaders",
+  welcomeTitle: process.env.TELEGRAM_BOT_WELCOME_TITLE || "StreamLoaders",
   welcomeText:
     process.env.TELEGRAM_BOT_WELCOME_TEXT ||
     "Envoie-moi le lien d'une vidéo pour commencer.",
