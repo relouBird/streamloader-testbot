@@ -109,6 +109,7 @@ Complétez ensuite `.env`. Les variables attendues par le code sont :
 | `TELEGRAM_BOT_DESCRIPTION` | Description affichée dans le chat vide |
 | `TELEGRAM_BOT_SHORT_DESCRIPTION` | Description courte du profil |
 | `TELEGRAM_BOT_PROFILE_PHOTO` | Chemin vers la nouvelle photo JPEG du profil |
+| `TELEGRAM_BOT_WELCOME_PHOTO` | Chemin vers la photo envoyée avec `/start` |
 | `TELEGRAM_BOT_WELCOME_TITLE` | Nom affiché dans le message `/start` |
 | `TELEGRAM_BOT_WELCOME_TEXT` | Texte complémentaire du message `/start` |
 | `TELEGRAM_BOT_COMMANDS` | Tableau JSON optionnel des commandes Telegram |
@@ -119,6 +120,11 @@ Complétez ensuite `.env`. Les variables attendues par le code sont :
 Ne commitez jamais `.env`, `.env.test.local` ou `.env.prod.local`. Ces fichiers
 sont ignorés par Git ; utilisez `.env.example` comme modèle sans y placer de
 secret.
+
+Les chemins relatifs sont recherchés depuis la racine du projet puis depuis
+`src/`. Ainsi, un fichier placé dans `src/assets/logo.jpg` peut être configuré
+avec `TELEGRAM_BOT_PROFILE_PHOTO=./assets/logo.jpg`. Le build recopie ensuite
+`src/assets/` dans `dist/assets/`.
 
 Au démarrage, le bot appelle `setMyName`, `setMyDescription`,
 `setMyShortDescription`, `setMyProfilePhoto`, `setMyCommands` et

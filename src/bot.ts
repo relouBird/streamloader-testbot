@@ -163,6 +163,27 @@ export default class Bot {
     console.log(`${LOG} ✅ Identité et menu Telegram configurés`);
   }
 
+  private async sendWelcomeMessage(
+    chatId: number,
+    text: string,
+  ): Promise<void> {
+    if (BOT_CONFIG.welcomePhotoPath) {
+      try {
+        await this.bot?.sendPhoto(chatId, BOT_CONFIG.welcomePhotoPath, {
+          caption: text,
+          parse_mode: "Markdown",
+        });
+        return;
+      } catch (error) {
+        console.error(
+          `${LOG} ❌ Photo de bienvenue impossible (chatId=${chatId}):`,
+          (error as Error).message,
+        );
+      }
+    }
+    await this.safeSend(chatId, text, { parse_mode: "Markdown" });
+  }
+
   private registerUser(msg: Message): number {
     if (msg.chat.type !== "private" || !msg.from) return this.users.count();
     return this.users.add({
@@ -440,17 +461,16 @@ export default class Bot {
   //  HANDLERS
   // ─────────────────────────────────────────────────────────────────
   startBot() {
-    this.bot?.onText(/\/start/, (msg) => {
+    this.bot?.onText(/\/start(?:@\w+)?/, async (msg) => {
       const totalUsers = this.registerUser(msg);
       console.log("Nouveau /start de " + msg.chat.username);
-      this.safeSend(
+      await this.sendWelcomeMessage(
         msg.chat.id,
         `👋 Salut ! Bienvenue sur *${BOT_CONFIG.welcomeTitle}* 🚀\n\n` +
           `Envoie-moi le lien d'une vidéo (YouTube, TikTok, Instagram...) et télécharge-la instantanément.\n\n` +
           `💡 Les membres Premium du site profitent de téléchargements illimités et sans restriction de durée !\n\n` +
           `👥 *${totalUsers.toLocaleString("fr-FR")}* utilisateurs utilisent déjà ce bot.\n\n` +
           BOT_CONFIG.welcomeText,
-        { parse_mode: "Markdown" },
       );
     });
 

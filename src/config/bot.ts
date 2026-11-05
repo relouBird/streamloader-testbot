@@ -1,7 +1,22 @@
 import path from "path";
+import fs from "fs";
 import { BotCommand, MenuButton } from "node-telegram-bot-api";
 import dotenv from "dotenv";
 dotenv.config(); // ⚠️ DOIT être appelé avant toute lecture de process.env plus bas
+
+const resolveConfiguredFile = (configuredPath: string | undefined): string => {
+  if (!configuredPath) return "";
+  if (path.isAbsolute(configuredPath)) return configuredPath;
+
+  const candidates = [
+    path.resolve(process.cwd(), configuredPath),
+    path.resolve(process.cwd(), "src", configuredPath),
+    path.resolve(__dirname, "..", configuredPath),
+  ];
+  return candidates.find((candidate) => {
+    return fs.existsSync(candidate);
+  }) || candidates[0];
+};
 
 const parseCommands = (): BotCommand[] => {
   const defaultCommands: BotCommand[] = [
@@ -45,9 +60,12 @@ export const BOT_CONFIG = {
   shortDescription:
     process.env.TELEGRAM_BOT_SHORT_DESCRIPTION ||
     "Téléchargeur de vidéos rapide et gratuit.",
-  profilePhotoPath: process.env.TELEGRAM_BOT_PROFILE_PHOTO
-    ? path.resolve(process.env.TELEGRAM_BOT_PROFILE_PHOTO)
-    : "",
+  profilePhotoPath: resolveConfiguredFile(
+    process.env.TELEGRAM_BOT_PROFILE_PHOTO,
+  ),
+  welcomePhotoPath: resolveConfiguredFile(
+    process.env.TELEGRAM_BOT_WELCOME_PHOTO,
+  ),
   commands: parseCommands(),
   menuButton: { type: "commands" } as MenuButton,
   welcomeTitle: process.env.TELEGRAM_BOT_WELCOME_TITLE || "StreamLoaders",
