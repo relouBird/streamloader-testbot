@@ -9,9 +9,10 @@ import TelegramBot, {
   Message,
   SendMessageParams,
   Update,
-  BotCommand,
 } from "node-telegram-bot-api";
 import SessionStore from "./utils/sessionStore";
+import UserStore from "./utils/userStore";
+import { BOT_CONFIG } from "./config/bot";
 
 const LOG = "[BOT]";
 
@@ -64,6 +65,7 @@ export default class Bot {
   protected bot: TelegramBot | undefined;
   protected api: AxiosInstance | undefined;
   protected readonly sessions = new SessionStore();
+  protected readonly users = new UserStore();
 
   readonly TMP_DIR = path.join(__dirname, "tmp");
   readonly HOURGLASS = "\u23F3";
@@ -136,17 +138,39 @@ export default class Bot {
   }
 
   private async configureTelegramMenu(): Promise<void> {
-    const commands: BotCommand[] = [
-      { command: "start", description: "Démarrer le bot" },
-      { command: "help", description: "Afficher l'aide" },
-      { command: "link", description: "Lier mon compte avec une clé API" },
-    ];
+    if (!this.bot) throw new Error("Bot Telegram non initialisé");
 
-    await this.bot?.setMyCommands(commands);
-    await this.bot?.setChatMenuButton({
-      menu_button: { type: "commands" },
+    await this.bot.setMyName({ name: BOT_CONFIG.name });
+    await this.bot.setMyDescription({ description: BOT_CONFIG.description });
+    await this.bot.setMyShortDescription({
+      short_description: BOT_CONFIG.shortDescription,
     });
-    console.log(`${LOG} ✅ Menu Telegram natif configuré`);
+    await this.bot.setMyCommands(BOT_CONFIG.commands);
+    await this.bot.setChatMenuButton({ menu_button: BOT_CONFIG.menuButton });
+
+    if (BOT_CONFIG.profilePhotoPath) {
+      if (!fs.existsSync(BOT_CONFIG.profilePhotoPath)) {
+        throw new Error(
+          `Photo de profil Telegram introuvable: ${BOT_CONFIG.profilePhotoPath}`,
+        );
+      }
+      await this.bot.setMyProfilePhoto({
+        type: "static",
+        photo: BOT_CONFIG.profilePhotoPath,
+      });
+    }
+
+    console.log(`${LOG} ✅ Identité et menu Telegram configurés`);
+  }
+
+  private registerUser(msg: Message): number {
+    if (msg.chat.type !== "private" || !msg.from) return this.users.count();
+    return this.users.add({
+      userId: msg.from.id,
+      firstName: msg.from.first_name || "Utilisateur",
+      username: msg.from.username,
+      joinedAt: new Date().toISOString(),
+    });
   }
 
   private async createSession(telegramId: number): Promise<string> {
@@ -417,12 +441,15 @@ export default class Bot {
   // ─────────────────────────────────────────────────────────────────
   startBot() {
     this.bot?.onText(/\/start/, (msg) => {
+      const totalUsers = this.registerUser(msg);
       console.log("Nouveau /start de " + msg.chat.username);
       this.safeSend(
         msg.chat.id,
-        `👋 Salut ! Bienvenue sur *StreamLoaders TestBot* 🚀\n\n` +
+        `👋 Salut ! Bienvenue sur *${BOT_CONFIG.welcomeTitle}* 🚀\n\n` +
           `Envoie-moi le lien d'une vidéo (YouTube, TikTok, Instagram...) et télécharge-la instantanément.\n\n` +
-          `💡 Les membres Premium du site profitent de téléchargements illimités et sans restriction de durée !`,
+          `💡 Les membres Premium du site profitent de téléchargements illimités et sans restriction de durée !\n\n` +
+          `👥 *${totalUsers.toLocaleString("fr-FR")}* utilisateurs utilisent déjà ce bot.\n\n` +
+          BOT_CONFIG.welcomeText,
         { parse_mode: "Markdown" },
       );
     });
@@ -448,6 +475,7 @@ export default class Bot {
 
   getMessage() {
     this.bot?.on("message", async (msg) => {
+      this.registerUser(msg);
       const chatId = msg.chat.id;
       const text = msg.text;
       if (!text || text.startsWith("/")) return;

@@ -45,7 +45,11 @@ et reçoit les webhooks Telegram en production.
 
 - Mode **polling** en développement.
 - Mode **webhook Telegram** en production, avec URL et secret dérivés du token.
+- Identité Telegram configurable dans `src/config/bot.ts` ou via `.env` :
+  nom, descriptions, photo JPEG, commandes et bouton de menu.
 - Menu Telegram natif configuré avec `/start`, `/help` et `/link`.
+- Compteur persistant des utilisateurs privés enregistré dans
+  `data/bot-users.json` et affiché dans `/start`.
 - Commandes `/start` et `/help`.
 - Réception d'URLs vidéo HTTP(S), analyse et choix du format.
 - Téléchargement vidéo, audio et identification musicale optionnelle via
@@ -101,6 +105,13 @@ Complétez ensuite `.env`. Les variables attendues par le code sont :
 | `APP_URL` | URL publique de l'application ; obligatoire en webhook et doit être en HTTPS |
 | `API_URL` | URL de l'API consommée par le bot |
 | `TELEGRAM_BOT_TOKEN` | Token du bot Telegram |
+| `TELEGRAM_BOT_NAME` | Nom public du bot |
+| `TELEGRAM_BOT_DESCRIPTION` | Description affichée dans le chat vide |
+| `TELEGRAM_BOT_SHORT_DESCRIPTION` | Description courte du profil |
+| `TELEGRAM_BOT_PROFILE_PHOTO` | Chemin vers la nouvelle photo JPEG du profil |
+| `TELEGRAM_BOT_WELCOME_TITLE` | Nom affiché dans le message `/start` |
+| `TELEGRAM_BOT_WELCOME_TEXT` | Texte complémentaire du message `/start` |
+| `TELEGRAM_BOT_COMMANDS` | Tableau JSON optionnel des commandes Telegram |
 | `X_BOT_SECRET` | Secret partagé entre le bot et l'API |
 | `SHAZAM_API_KEY` | Clé RapidAPI, nécessaire pour l'identification musicale |
 | `SHAZAM_API_HOST` | Hôte RapidAPI ; une valeur par défaut est fournie |
@@ -108,6 +119,13 @@ Complétez ensuite `.env`. Les variables attendues par le code sont :
 Ne commitez jamais `.env`, `.env.test.local` ou `.env.prod.local`. Ces fichiers
 sont ignorés par Git ; utilisez `.env.example` comme modèle sans y placer de
 secret.
+
+Au démarrage, le bot appelle `setMyName`, `setMyDescription`,
+`setMyShortDescription`, `setMyProfilePhoto`, `setMyCommands` et
+`setChatMenuButton`. La photo est renvoyée à Telegram comme nouveau fichier à
+chaque démarrage ; utilisez donc un fichier JPEG local. Le compteur concerne
+les utilisateurs ayant envoyé un message privé au bot, et non les membres
+d'un canal ou d'un groupe.
 
 ## Commandes
 
