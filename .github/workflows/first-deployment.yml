@@ -24,10 +24,10 @@ jobs:
           script: |
             set -e
 
-            APP_DIR="$HOME/bot"
+            APP_DIR="$HOME/testbot"
             REPOSITORY="https://github.com/relouBird/streamloader-testbot.git"
             BRANCH="main"
-            NODE_ENV_ACTIVATE="$HOME/nodevenv/bot/22/bin/activate"
+            NODE_ENV_ACTIVATE="$HOME/nodevenv/testbot/24/bin/activate"
             ENV_FILE="$APP_DIR/.env"
 
             if [ ! -f "$NODE_ENV_ACTIVATE" ]; then
