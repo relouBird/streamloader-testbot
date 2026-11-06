@@ -1,8 +1,6 @@
 # API dédiée au bot Telegram
 
-> **Version du contrat : v2** — voir [read-apiv2.md](./read-apiv2.md).
-> Ce fichier est conservé comme point d'entrée historique ; les routes et
-> données du flux d'offre site sont décrites dans la v2.
+> **Version du contrat : v2**
 
 Le bot ne doit plus importer `database/queries` et ne doit plus appliquer les
 quotas ou vérifier le plan localement. L'API est la source de vérité pour le
@@ -45,6 +43,10 @@ Réponse :
 
 `user` contient le compte lié, ou `null` si le chat Telegram n'est pas encore
 lié.
+
+L'API crée ou met à jour `telegram_users` pendant cet appel. La session JWT
+porte ensuite l'identité Telegram authentifiée ; les routes protégées n'ont
+pas besoin de recevoir un `telegramId` fourni par le client.
 
 ## 2. Lier un compte
 
@@ -164,7 +166,39 @@ Le bot ne bloque jamais l'envoi du fichier si cette route échoue. Le jeton
 est destiné à l'URL `SITE_URL/from-telegram?t=...`; le site doit le vérifier
 auprès de l'API côté serveur. Un simple `telegramId` en URL n'est pas accepté.
 
-L'API doit enregistrer atomiquement la date de l'offre décidée afin que deux
+L'API enregistre atomiquement la date de l'offre décidée afin que deux
 téléchargements simultanés ne produisent pas deux messages. La preuve que le
 site a effectivement été visité est une métrique distincte, enregistrée par
 le serveur du site lors de la validation du jeton.
+
+### 4. Vérifier une offre côté site
+
+Le navigateur ne doit jamais appeler directement cette route avec le secret.
+Le serveur du site reçoit le paramètre `t`, puis appelle l'API :
+
+```http
+POST /api/bot/verify-offer
+Content-Type: application/json
+x-site-offer-secret: <SITE_OFFER_SECRET>
+
+{"token":"<jeton reçu par le site>"}
+```
+
+Le secret est partagé uniquement entre le serveur du site et l'API. Il est
+distinct de `X_BOT_SECRET` et n'est jamais envoyé au bot, à Telegram ou au
+navigateur.
+
+Réponse valide :
+
+```json
+{
+  "valid": true,
+  "campaign": "site_visit",
+  "source": "telegram_bot",
+  "expiresAt": "2026-11-06T15:00:00.000Z"
+}
+```
+
+La vérification peut enregistrer `verified_at` et associer l'événement au
+`jti` de `telegram_site_offer_events`. Le site ne doit pas déduire une visite
+réelle de la seule présence du bouton Telegram.

@@ -36,8 +36,8 @@ et reçoit les webhooks Telegram en production.
   quotas et les autorisations viennent de l'API dédiée.
 - Les sessions JWT sont conservées dans un cache LRU borné et temporaire,
   défini dans [`src/stores/sessionStore.ts`](./src/stores/sessionStore.ts).
-- [`read-apiv2.md`](./read-apiv2.md) décrit le contrat API v2 consommé par le
-  bot ; [`read-api.md`](./read-api.md) reste le point d'entrée historique.
+- [`read-api.md`](./read-api.md) décrit l'unique contrat API v2 consommé par le
+  bot.
   Dans l'état actuel du bootstrap, les routeurs métier sont encore à monter
   dans `src/index.ts` ; les routes documentées ne sont donc pas nécessairement
   toutes actives dans ce dépôt.
@@ -67,8 +67,7 @@ existe, détermine directement si le plan est `free` ou `premium`.
 
 ```text
 .
-├── read-api.md             # Contrat API historique
-├── read-apiv2.md           # Contrat API v2 consommé par le bot
+├── read-api.md             # Contrat API v2 consommé par le bot
 ├── package.json            # Scripts et dépendances
 ├── tsconfig.json           # Configuration TypeScript
 ├── src/
@@ -175,8 +174,7 @@ Le health check est disponible sur `GET /api/health` et renvoie notamment
 ## Documentation API
 
 La documentation détaillée du contrat consommé par le frontend et le bot se
-trouve dans [`read-api.md`](./read-api.md) et
-[`read-apiv2.md`](./read-apiv2.md). La v2 couvre notamment :
+trouve dans [`read-api.md`](./read-api.md). La v2 couvre notamment :
 
 - authentification (`/api/auth/*`) ;
 - analyse, téléchargement et progression média (`/api/media/*`) ;

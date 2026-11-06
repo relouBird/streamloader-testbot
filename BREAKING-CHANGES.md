@@ -179,9 +179,8 @@ visite, une impression publicitaire ou un clic.
 
 Fichiers de référence :
 
-- `read-apiv2.md`
+- `read-api.md`
 - `ads.md`
-- `read-api.md` comme point d'entrée historique vers la v2
 
 Le contrat v2 corrige le problème d'identité du flux :
 
@@ -229,7 +228,7 @@ Depuis `1b78fc4`, le clone ajoute ou modifie :
 - la documentation du contrat API de cette offre ;
 - le contrat API v2 et la persistance des utilisateurs Telegram ;
 - le déplacement organisationnel des stores ;
-- l'alignement documentaire sur `read-apiv2.md` ;
+- la fusion du contrat v2 dans `read-api.md` ;
 - certains textes et contenus publics.
 
 Commande utile pour le portage :
