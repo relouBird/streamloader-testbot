@@ -29,9 +29,12 @@ l'API métier, indépendamment de la visite du site.
 - ne stocke pas de données publicitaires sensibles ;
 - ne transmet jamais la liste d'utilisateurs à un annonceur.
 
-### API métier
+### API métier (contrat v2)
 
 - reste la source de vérité pour le plan, les quotas et l'état de la campagne ;
+- crée ou met à jour `telegram_users` pendant `/api/bot/session` ;
+- récupère l'identité Telegram depuis la session JWT sur `/api/bot/site-offer` ;
+- conserve `last_offer_at` et les événements dans les tables dédiées ;
 - signe ou vérifie les jetons de redirection ;
 - décide si une campagne est active et si l'utilisateur est éligible ;
 - conserve, si nécessaire, le dernier affichage par utilisateur et par
@@ -64,8 +67,8 @@ après consentement et selon les règles de la campagne.
 5. Bot appelle `POST /api/bot/site-offer` pour cet utilisateur actif
 6. Si l'API répond `showSupportButton: true`, bot ajoute un bouton optionnel
 7. Bouton -> https://www.example.com/from-telegram?t=<jeton>
-8. Le serveur du site envoie t à l'API métier
-9. L'API vérifie signature, audience, expiration et campagne
+8. Le serveur du site envoie `t` à `/api/bot/verify-offer`
+9. L'API vérifie le secret serveur, la signature, l'audience, l'expiration et la campagne
 10. Le site affiche sa page et ses publicités autorisées
 ```
 
@@ -114,19 +117,16 @@ Recommandations :
 - transmettre le jeton uniquement en HTTPS ;
 - ne pas journaliser l'URL complète.
 
-## Vérification côté API
+## Vérification côté API (contrat v2)
 
-Contrat proposé :
+Contrat effectif :
 
 ```http
-POST /api/public/telegram-visit/verify
-Authorization: Bearer <secret serveur-site>
+POST /api/bot/verify-offer
 Content-Type: application/json
+x-site-offer-secret: <SITE_OFFER_SECRET>
 
-{
-  "token": "<jeton reçu par le site>",
-  "source": "telegram_bot"
-}
+{ "token": "<jeton reçu par le site>" }
 ```
 
 Réponse valide :
@@ -149,9 +149,9 @@ Réponse invalide :
 }
 ```
 
-Le secret de cette route doit être distinct de `X_BOT_SECRET` si le site et
-l'API ont des cycles de déploiement différents. Si le site est servi par
-l'API elle-même, l'appel peut rester interne et ne pas exposer de secret au
+Le secret de cette route est distinct de `X_BOT_SECRET`. Il est utilisé
+uniquement entre le serveur du site et l'API. Si le site est servi par l'API
+elle-même, l'appel peut rester interne et ne pas exposer de secret au
 navigateur.
 
 ## Règle des six heures
@@ -169,22 +169,34 @@ mais il n'est pas fiable comme règle métier :
 
 Il ne faut donc pas utiliser ce cache pour une restriction commerciale stricte.
 
-### Solution minimale recommandée
+### Tables API v2 effectives
 
-Ajouter dans l'API une table ou un stockage clé-valeur minimal :
+L'API crée et met à jour un utilisateur Telegram lors de
+`POST /api/bot/session` :
 
 ```text
-telegram_ad_touch
-- telegram_user_key
-- campaign_key
-- last_offered_at
-- created_at
-- updated_at
+telegram_users
+- telegram_id       PRIMARY KEY
+- first_seen_at
+- last_seen_at
+- last_offer_at
 ```
 
-`telegram_user_key` doit être un HMAC serveur de l'identifiant Telegram, par
-exemple `HMAC-SHA256(TELEGRAM_USER_HASH_SECRET, telegramId)`. Un hash simple
-ou un identifiant Telegram en clair n'est pas nécessaire.
+Les offres sont conservées séparément :
+
+```text
+telegram_site_offer_events
+- telegram_id
+- campaign
+- jti
+- token_hash
+- offered_at
+- expires_at
+- verified_at
+```
+
+Le token n'est jamais stocké en clair. Son `jti` associe l'offre à
+l'utilisateur côté API.
 
 L'API répond au bot via `POST /api/bot/site-offer` :
 
@@ -196,9 +208,10 @@ L'API répond au bot via `POST /api/bot/site-offer` :
 }
 ```
 
-La décision et l'enregistrement doivent être atomiques pour éviter deux
-messages lors de téléchargements simultanés. Si l'API répond
-`showSupportButton: false`, le bot n'envoie rien.
+La décision et l'enregistrement sont atomiques pour éviter deux messages lors
+de téléchargements simultanés. Si l'API répond `showSupportButton: false`, le
+bot n'envoie rien. Aucun `telegramId` n'est nécessaire dans le body de
+`/api/bot/site-offer`, car il vient de la session JWT.
 
 Cette route n'est donc pas un envoi publicitaire global. Elle est déclenchée
 par une activité réelle et récente : un fichier vient d'être transmis à cet
@@ -212,14 +225,6 @@ utilisateur. L'API peut distinguer :
 
 Le bot ne doit pas prétendre que l'utilisateur a vu le site simplement parce
 que le bouton a été envoyé. La mesure fiable commence côté serveur du site.
-
-### Variante sans nouvelle table
-
-Un champ `lastTelegramSiteOfferAt` dans la table utilisateur existante peut
-suffire si l'offre est globale et unique. Cette solution est préférable à une
-nouvelle table si l'API possède déjà la relation `telegramId -> user`.
-Cependant, elle ne couvre pas proprement plusieurs campagnes ou utilisateurs
-Telegram non liés à un compte du site.
 
 ## Bouton Telegram
 
@@ -262,7 +267,8 @@ TELEGRAM_SITE_OFFER_INTERVAL_HOURS=6
 Le bot appelle la route uniquement si `TELEGRAM_SITE_OFFER_ENABLED=true` et
 si `SITE_URL` est défini. Il ne doit pas recevoir
 `TELEGRAM_USER_HASH_SECRET` ni le secret de signature. Il demande une décision
-et un jeton à l'API. Une erreur sur cette route est non bloquante : le fichier
+et un jeton à l'API. `SITE_OFFER_SECRET` appartient uniquement au serveur du
+site et à l'API. Une erreur sur cette route est non bloquante : le fichier
 déjà téléchargé reste envoyé.
 
 ## Anti-abus et confidentialité
@@ -281,8 +287,9 @@ déjà téléchargé reste envoyé.
 
 ## Décision proposée
 
-1. Phase 1 : bouton optionnel vers le site après téléchargement.
-2. Phase 2 : endpoint API qui décide l'éligibilité et émet un jeton court.
-3. Phase 3 : vérification serveur du site et statistiques agrégées.
-4. Phase 4 : stockage API minimal du dernier affichage sur six heures.
+1. `/api/bot/session` identifie et persiste l'utilisateur Telegram.
+2. `/api/bot/site-offer` décide l'éligibilité et émet un jeton court.
+3. Le site vérifie le jeton via `/api/bot/verify-offer`.
+4. Les événements `offered_at`, `verified_at` et `visited_at` sont suivis
+   séparément.
 5. Ne pas ajouter de webhook API -> bot pour ce parcours.

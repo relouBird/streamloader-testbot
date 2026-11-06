@@ -1,5 +1,9 @@
 # API dédiée au bot Telegram
 
+> **Version du contrat : v2** — voir [read-apiv2.md](./read-apiv2.md).
+> Ce fichier est conservé comme point d'entrée historique ; les routes et
+> données du flux d'offre site sont décrites dans la v2.
+
 Le bot ne doit plus importer `database/queries` et ne doit plus appliquer les
 quotas ou vérifier le plan localement. L'API est la source de vérité pour le
 compte lié, le plan, les quotas, la durée maximale et les autorisations.

@@ -15,13 +15,14 @@ clone.
               └─ 0f37cf5  env bot secret correction
                   └─ 3d84262  Breaking changes on process of bot images.
                       └─ 28d04a9  Somes changes on Configuration of Telegram Bot
+                          └─ 8fa43b9  Add optional site offer flow
 ```
 
-Le dernier commit historique est `28d04a9` (`main` et `origin/main`). Le
+Le dernier commit historique est `8fa43b9` (`main` et `origin/main`). Le
 premier commit est donc la base de production originale ; les commits suivants
-constituent les écarts à examiner et à reporter sélectivement. Le commit local
-préparé avec ce document ajoute le flux d'offre site et le déplacement des
-stores vers `src/stores/`.
+constituent les écarts à examiner et à reporter sélectivement. Les changements
+non encore commités de documentation alignent maintenant le clone sur le
+contrat API v2 effectivement retenu.
 
 ## 1. `df7ccd3` — déploiement
 
@@ -154,7 +155,7 @@ bot.callbackQuery();
 `bot.start()` ne doit pas attendre indéfiniment les appels `setMyName`,
 `setMyDescription`, `setMyProfilePhoto` ou `setChatMenuButton`.
 
-## 7. Offre optionnelle vers le site
+## 7. Offre optionnelle vers le site — contrat du bot
 
 Fichiers modifiés ou ajoutés :
 
@@ -171,18 +172,37 @@ nécessaire, un `redirectToken` temporaire signé. Le bot n'envoie aucun message
 si l'API indique qu'aucune offre n'est due. La fonctionnalité est désactivée
 par défaut avec `TELEGRAM_SITE_OFFER_ENABLED=false`.
 
-L'API doit encore implémenter :
-
-- la décision atomique de fréquence (six heures) ;
-- la génération du jeton signé ;
-- l'enregistrement de `offered_at` ;
-- la vérification côté site ;
-- les métriques distinctes `clicked_at`, `verified_at` et `visited_at`.
-
 Cette fonctionnalité ne doit jamais conditionner le téléchargement à une
 visite, une impression publicitaire ou un clic.
 
-## 8. Déplacement des stores
+## 8. Contrat API v2 et identité Telegram
+
+Fichiers de référence :
+
+- `read-apiv2.md`
+- `ads.md`
+- `read-api.md` comme point d'entrée historique vers la v2
+
+Le contrat v2 corrige le problème d'identité du flux :
+
+- `POST /api/bot/session` reçoit `telegramId` et crée ou met à jour
+  `telegram_users` ;
+- la session JWT porte ensuite l'identité Telegram ;
+- `POST /api/bot/site-offer` utilise cette session et ne reçoit pas de
+  `telegramId` supplémentaire ;
+- `telegram_users.last_offer_at` applique la fenêtre de six heures ;
+- `telegram_site_offer_events` conserve `jti`, `token_hash`, `offered_at`,
+  `expires_at` et `verified_at` ;
+- le site vérifie le jeton avec `POST /api/bot/verify-offer` et
+  `x-site-offer-secret` ;
+- `SITE_OFFER_SECRET` n'est jamais placé dans le bot ou dans le navigateur.
+
+Les statistiques doivent distinguer l'offre envoyée (`offered_at`) de la
+validation serveur (`verified_at`) et de la page réellement rendue
+(`visited_at`). Le bouton reste optionnel et le téléchargement reste
+indépendant du flux publicitaire.
+
+## 9. Déplacement des stores
 
 Fichiers concernés :
 
@@ -207,7 +227,9 @@ Depuis `1b78fc4`, le clone ajoute ou modifie :
 - la robustesse du démarrage ;
 - l'offre optionnelle vers le site après téléchargement ;
 - la documentation du contrat API de cette offre ;
+- le contrat API v2 et la persistance des utilisateurs Telegram ;
 - le déplacement organisationnel des stores ;
+- l'alignement documentaire sur `read-apiv2.md` ;
 - certains textes et contenus publics.
 
 Commande utile pour le portage :

@@ -35,11 +35,12 @@ et reçoit les webhooks Telegram en production.
 - Le bot ne lit plus directement la base de données : le compte, le plan, les
   quotas et les autorisations viennent de l'API dédiée.
 - Les sessions JWT sont conservées dans un cache LRU borné et temporaire,
-  défini dans [`src/utils/sessionStore.ts`](./src/utils/sessionStore.ts).
-- [`api.md`](./api.md) décrit le contrat API cible consommé par le frontend et
-  le bot. Dans l'état actuel du bootstrap, les routeurs métier sont encore à
-  monter dans `src/index.ts` ; les routes documentées dans `api.md` ne sont
-  donc pas nécessairement toutes actives dans ce dépôt.
+  défini dans [`src/stores/sessionStore.ts`](./src/stores/sessionStore.ts).
+- [`read-apiv2.md`](./read-apiv2.md) décrit le contrat API v2 consommé par le
+  bot ; [`read-api.md`](./read-api.md) reste le point d'entrée historique.
+  Dans l'état actuel du bootstrap, les routeurs métier sont encore à monter
+  dans `src/index.ts` ; les routes documentées ne sont donc pas nécessairement
+  toutes actives dans ce dépôt.
 
 ## Fonctionnalités du bot
 
@@ -66,7 +67,8 @@ existe, détermine directement si le plan est `free` ou `premium`.
 
 ```text
 .
-├── api.md                  # Contrat et exemples des routes API StreamLoaders
+├── read-api.md             # Contrat API historique
+├── read-apiv2.md           # Contrat API v2 consommé par le bot
 ├── package.json            # Scripts et dépendances
 ├── tsconfig.json           # Configuration TypeScript
 ├── src/
@@ -173,7 +175,8 @@ Le health check est disponible sur `GET /api/health` et renvoie notamment
 ## Documentation API
 
 La documentation détaillée du contrat consommé par le frontend et le bot se
-trouve dans [`api.md`](./api.md). Elle couvre notamment :
+trouve dans [`read-api.md`](./read-api.md) et
+[`read-apiv2.md`](./read-apiv2.md). La v2 couvre notamment :
 
 - authentification (`/api/auth/*`) ;
 - analyse, téléchargement et progression média (`/api/media/*`) ;
@@ -234,7 +237,8 @@ partir de `dev`, elle-même créée à partir de `main`.
 
 - Les versions affichées par le serveur et le health check ne sont pas encore
   alignées sur la version `2.1.0` de `package.json`.
-- Le statut `yt-dlp` décrit dans `api.md` concerne le service vidéo distant ;
+- Le statut `yt-dlp` décrit dans `read-api.md` concerne le service vidéo
+  distant ;
   il n'est pas vérifié directement par ce processus Node.
 - La liaison Telegram nécessite une clé API valide du compte du site ; un
   identifiant Telegram ne peut être associé qu'à un seul compte.
