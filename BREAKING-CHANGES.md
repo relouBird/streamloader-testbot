@@ -214,6 +214,27 @@ Fichiers concernés :
 Il s'agit d'un déplacement organisationnel sans changement de comportement.
 Les chemins d'import du projet principal doivent être adaptés en conséquence.
 
+## 10. Nettoyage des documentations sur le serveur
+
+Fichiers modifiés :
+
+- `.github/workflows/main.yml`
+- `.github/workflows/first-deployment.yml`
+
+Les fichiers Markdown restent versionnés dans Git et disponibles dans le dépôt,
+mais ne sont plus conservés dans le répertoire applicatif de production. Les
+deux workflows exécutent, après le build et avant le redémarrage, une
+suppression des fichiers `*.md` sous `$HOME/testbot`.
+
+Le nettoyage exclut `$HOME/testbot/.git` afin de préserver le mécanisme de
+déploiement suivant (`git fetch`, `git reset` et comparaison des révisions).
+Le fichier `.env` reste également protégé par le processus existant : il est
+ignoré et n'est jamais copié depuis GitHub.
+
+Cette suppression est répétée à chaque déploiement, ce qui retire aussi les
+anciens fichiers Markdown déjà présents sur le serveur. Elle ne modifie pas
+les fichiers du dépôt local ni les fichiers suivis dans Git.
+
 ## Différence globale à reporter
 
 Depuis `1b78fc4`, le clone ajoute ou modifie :
@@ -229,6 +250,7 @@ Depuis `1b78fc4`, le clone ajoute ou modifie :
 - le contrat API v2 et la persistance des utilisateurs Telegram ;
 - le déplacement organisationnel des stores ;
 - la fusion du contrat v2 dans `read-api.md` ;
+- le nettoyage des fichiers Markdown lors des déploiements GitHub Actions ;
 - certains textes et contenus publics.
 
 Commande utile pour le portage :
