@@ -10,9 +10,14 @@ import TelegramBot, {
   SendMessageParams,
   Update,
 } from "node-telegram-bot-api";
-import SessionStore from "./utils/sessionStore";
-import UserStore from "./utils/userStore";
+
+// Configurations
 import { BOT_CONFIG } from "./config/bot";
+import ENV from "./config/env";
+
+// Stores
+import SessionStore from "./stores/sessionStore";
+import UserStore from "./stores/userStore";
 
 const LOG = "[BOT]";
 
@@ -39,6 +44,12 @@ interface AnalyzeResponse {
 
 interface JobResponse {
   jobId: string;
+}
+
+interface SiteOfferResponse {
+  showSupportButton: boolean;
+  redirectToken?: string;
+  nextEligibleAt?: string;
 }
 
 /**
@@ -225,6 +236,44 @@ export default class Bot {
       }
     }
     await this.safeSend(chatId, text, { parse_mode: "Markdown" });
+  }
+
+  private async sendSiteOffer(
+    telegramId: number,
+    chatId: number,
+  ): Promise<void> {
+    if (!ENV.TELEGRAM_SITE_OFFER_ENABLED || !ENV.SITE_URL) return;
+
+    try {
+      const response = await this.request<SiteOfferResponse>(telegramId, {
+        method: "POST",
+        url: "/bot/site-offer",
+        data: { source: "telegram_bot" },
+      });
+      const offer = response.data;
+      if (!offer.showSupportButton || !offer.redirectToken) return;
+
+      const url = `${ENV.SITE_URL}/from-telegram?t=${encodeURIComponent(
+        offer.redirectToken,
+      )}`;
+      await this.safeSend(
+        chatId,
+        "🎬 Ton téléchargement est terminé.\n\n" +
+          "Tu peux visiter StreamLoaders pour découvrir les nouveautés et soutenir le service.",
+        {
+          reply_markup: {
+            inline_keyboard: [[
+              { text: "🌐 Visiter StreamLoaders", url },
+            ]],
+          },
+        },
+      );
+    } catch (error) {
+      console.warn(
+        `${LOG} ⚠️ Offre site indisponible (téléchargement conservé) :`,
+        (error as Error).message,
+      );
+    }
   }
 
   private registerUser(msg: Message): number {
@@ -859,6 +908,8 @@ export default class Bot {
           );
         }
         await this.safeDelete(chatId, statusMsg.message_id);
+
+        await this.sendSiteOffer(query.from.id, chatId);
       } catch (e) {
         console.error(
           `${LOG} ❌ envoi fichier jobId=${jobId} :`,

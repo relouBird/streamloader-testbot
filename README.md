@@ -104,7 +104,9 @@ Complétez ensuite `.env`. Les variables attendues par le code sont :
 | `PORT` | Port HTTP local, par défaut `3000` |
 | `APP_URL` | URL publique de l'application ; obligatoire en webhook et doit être en HTTPS |
 | `API_URL` | URL de l'API consommée par le bot |
+| `SITE_URL` | URL du site utilisée par le bouton de visite optionnel |
 | `TELEGRAM_BOT_TOKEN` | Token du bot Telegram |
+| `TELEGRAM_SITE_OFFER_ENABLED` | Active la demande d'offre site après un téléchargement réussi |
 | `TELEGRAM_BOT_NAME` | Nom public du bot |
 | `TELEGRAM_BOT_DESCRIPTION` | Description affichée dans le chat vide |
 | `TELEGRAM_BOT_SHORT_DESCRIPTION` | Description courte du profil |
@@ -132,6 +134,12 @@ Au démarrage, le bot appelle `setMyName`, `setMyDescription`,
 chaque démarrage ; utilisez donc un fichier JPEG local. Le compteur concerne
 les utilisateurs ayant envoyé un message privé au bot, et non les membres
 d'un canal ou d'un groupe.
+
+Si `TELEGRAM_SITE_OFFER_ENABLED=true` et `SITE_URL` est défini, le bot demande
+à l'API, uniquement après l'envoi réussi d'un téléchargement à l'utilisateur,
+si un bouton de visite doit être affiché. L'API applique la fréquence de six
+heures et fournit un jeton temporaire vérifié côté serveur du site. Une erreur
+de cette fonctionnalité ne bloque jamais le téléchargement.
 
 ## Commandes
 

@@ -124,3 +124,43 @@ ou de quota doit rester dans l'API.
 Sur une réponse `401` provenant d'une route `/api/bot/*`, le bot doit refaire
 `POST /api/bot/session` avec son `telegramId`, puis rejouer la requête une seule
 fois. Il ne doit pas boucler indéfiniment.
+
+## Offre optionnelle vers le site
+
+Après un téléchargement réellement envoyé à Telegram, le bot peut demander
+si une offre de visite du site est due :
+
+```http
+POST /api/bot/site-offer
+Authorization: Bearer <session bot>
+Content-Type: application/json
+
+{"source":"telegram_bot"}
+```
+
+Cette route ne doit être appelée que pour l'utilisateur actif qui vient de
+terminer un téléchargement. Elle ne doit pas diffuser de campagne globale.
+L'API applique la fréquence minimale (par exemple six heures) et retourne :
+
+```json
+{
+  "showSupportButton": true,
+  "redirectToken": "<jeton court signé>",
+  "nextEligibleAt": "2026-11-06T20:00:00.000Z"
+}
+```
+
+Si aucune offre n'est due :
+
+```json
+{"showSupportButton":false}
+```
+
+Le bot ne bloque jamais l'envoi du fichier si cette route échoue. Le jeton
+est destiné à l'URL `SITE_URL/from-telegram?t=...`; le site doit le vérifier
+auprès de l'API côté serveur. Un simple `telegramId` en URL n'est pas accepté.
+
+L'API doit enregistrer atomiquement la date de l'offre décidée afin que deux
+téléchargements simultanés ne produisent pas deux messages. La preuve que le
+site a effectivement été visité est une métrique distincte, enregistrée par
+le serveur du site lors de la validation du jeton.
